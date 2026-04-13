@@ -26,7 +26,7 @@ import {
 import { cn } from "../lib/utils";
 import { useIdea } from "../context/IdeaContext";
 import { LandingPageContent } from "../types";
-import { GoogleGenAI, Type } from "@google/genai";
+import { chatWithAI } from "../services/geminiService";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -91,108 +91,13 @@ export function LandingPageLayer() {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      const prompt = `
-        You are an expert Landing Page Builder AI. 
-        Your goal is to help the user build a high-converting landing page through conversation.
-        
-        Current Active Context Idea: ${activeIdea ? JSON.stringify(activeIdea) : "None"}
-        User Request: "${userMessage}"
-        Current Landing Page Content: ${JSON.stringify(content)}
-        
-        INSTRUCTIONS:
-        1. If this is the start of the conversation, ask clarifying questions: What is the product? Who is the target audience? What is the main offer?
-        2. Based on user responses, generate or update the landing page content.
-        3. Always provide a helpful message explaining what you did or asking for more info.
-        4. If the user wants a specific style (minimal, bold, premium), adjust the copy accordingly.
-        5. Return a valid JSON object.
-        
-        Return a JSON object with two fields:
-        1. "message": Your response to the user.
-        2. "content": The updated LandingPageContent object. ALWAYS return the full content object if you make any changes.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              message: { type: Type.STRING },
-              content: { 
-                type: Type.OBJECT,
-                properties: {
-                  hero: {
-                    type: Type.OBJECT,
-                    properties: {
-                      headline: { type: Type.STRING },
-                      subheadline: { type: Type.STRING },
-                      cta: { type: Type.STRING }
-                    }
-                  },
-                  features: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        title: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        icon: { type: Type.STRING }
-                      }
-                    }
-                  },
-                  benefits: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        title: { type: Type.STRING },
-                        description: { type: Type.STRING }
-                      }
-                    }
-                  },
-                  testimonials: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        quote: { type: Type.STRING },
-                        author: { type: Type.STRING },
-                        role: { type: Type.STRING }
-                      }
-                    }
-                  },
-                  pricing: {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        plan: { type: Type.STRING },
-                        price: { type: Type.STRING },
-                        features: { type: Type.ARRAY, items: { type: Type.STRING } }
-                      }
-                    }
-                  },
-                  footer: {
-                    type: Type.OBJECT,
-                    properties: {
-                      headline: { type: Type.STRING },
-                      subheadline: { type: Type.STRING },
-                      buttonText: { type: Type.STRING }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+      const result = await chatWithAI(userMessage, { 
+        activeIdea, 
+        currentContent: content,
+        mode: "landing_page_builder" 
       });
 
-      const result = JSON.parse(response.text);
-      setMessages(prev => [...prev, { role: "assistant", content: result.message }]);
+      setMessages(prev => [...prev, { role: "assistant", content: result.reply }]);
       if (result.content) {
         setContent(result.content);
       }

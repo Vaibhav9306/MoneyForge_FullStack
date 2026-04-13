@@ -41,12 +41,14 @@ import {
   QrCode,
   Smartphone,
   Building2,
-  Wallet as WalletIcon
+  Wallet as WalletIcon,
+  Loader2
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { FinanceRecord, TransactionCategory, PaymentLink, Invoice, SubscriptionPlan, Payout } from "../types";
 import { useIdea } from "../context/IdeaContext";
 import api from "../services/api";
+import { getFinancialInsights, getFinancialPredictions } from "../services/geminiService";
 
 const INITIAL_TRANSACTIONS: FinanceRecord[] = [
   { id: "1", date: "2026-04-01", amount: 12000, category: "sales", type: "income", description: "Client Project A", status: "completed" },
@@ -86,6 +88,10 @@ export function FinanceLayer() {
   const [paymentModalData, setPaymentModalData] = useState<{ amount: number; description: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  const [aiInsights, setAiInsights] = useState<string>("");
+  const [aiPrediction, setAiPrediction] = useState<string>("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  
   // Form State
   const [formData, setFormData] = useState<Omit<FinanceRecord, "id">>({
     date: new Date().toISOString().split("T")[0],
@@ -116,6 +122,35 @@ export function FinanceLayer() {
     };
     fetchTransactions();
   }, []);
+
+  const handleFetchAIInsights = async () => {
+    setIsAiLoading(true);
+    try {
+      // Fallback to sample data if no transactions exist so user can still test
+      const dataToAnalyze = transactions.length > 0 ? transactions : INITIAL_TRANSACTIONS;
+      const insights = await getFinancialInsights(dataToAnalyze);
+      setAiInsights(insights);
+    } catch (err: any) {
+      console.error("Failed to fetch AI insights:", err);
+      setAiInsights(`Error: ${err.message || "Failed to load AI insights. Check console for details."}`);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleGeneratePrediction = async () => {
+    setIsAiLoading(true);
+    try {
+      const dataToAnalyze = transactions.length > 0 ? transactions : INITIAL_TRANSACTIONS;
+      const prediction = await getFinancialPredictions(dataToAnalyze);
+      setAiPrediction(prediction);
+    } catch (err: any) {
+      console.error("Failed to fetch AI predictions:", err);
+      setAiPrediction(`Error: ${err.message || "Failed to generate prediction. Check console for details."}`);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   // Calculations
   const totals = useMemo(() => {
@@ -509,32 +544,76 @@ export function FinanceLayer() {
 
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-            <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-purple-500" />
-              AI Insights
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-purple-500" />
+                AI Insights
+              </h3>
+              <button 
+                onClick={handleFetchAIInsights}
+                disabled={isAiLoading}
+                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider disabled:opacity-50"
+              >
+                {isAiLoading ? "Analyzing..." : "Refresh"}
+              </button>
+            </div>
             <div className="space-y-4">
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
-                <p className="text-xs font-bold text-amber-800 mb-1">Warning: High Burn Rate</p>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  Your marketing expenses increased by 40% this month without a proportional increase in revenue.
-                </p>
-              </div>
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                <p className="text-xs font-bold text-emerald-800 mb-1">Optimization Opportunity</p>
-                <p className="text-[11px] text-emerald-700 leading-relaxed">
-                  Switching to an annual subscription for your CRM could save you ₹12,000/year.
-                </p>
-              </div>
+              {aiInsights ? (
+                <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                  <p className="text-xs text-neutral-700 leading-relaxed whitespace-pre-line">
+                    {aiInsights}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-[11px] text-neutral-500 italic mb-3">No insights generated yet.</p>
+                  <button 
+                    onClick={handleFetchAIInsights}
+                    disabled={isAiLoading}
+                    className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-xs font-bold hover:bg-neutral-800 transition-all flex items-center gap-2 mx-auto disabled:opacity-50"
+                  >
+                    {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Analyze Data
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-lg shadow-indigo-100">
-            <h4 className="font-bold mb-2">Smart Tax Planning</h4>
-            <p className="text-xs text-indigo-100 leading-relaxed mb-4">
-              Our AI has identified ₹24,000 in potential tax deductions for your business structure.
+          <div className="bg-neutral-900 p-6 rounded-2xl text-white shadow-lg overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <TrendingUp className="w-16 h-16" />
+            </div>
+            <h4 className="font-bold mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              AI Financial Prediction
+            </h4>
+            <p className="text-xs text-neutral-400 leading-relaxed mb-4">
+              Get an AI-powered prediction of your balance, spending warnings, and savings suggestions for the next 3 months.
             </p>
-            <button className="w-full py-2 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-all">
+            {aiPrediction ? (
+              <div className="bg-neutral-800 p-3 rounded-xl border border-neutral-700 mb-4 max-h-[200px] overflow-y-auto custom-scrollbar">
+                <p className="text-[11px] text-neutral-300 leading-relaxed whitespace-pre-line">
+                  {aiPrediction}
+                </p>
+              </div>
+            ) : null}
+            <button 
+              onClick={handleGeneratePrediction}
+              disabled={isAiLoading}
+              className="w-full py-2 bg-amber-500 text-neutral-900 rounded-lg text-xs font-bold hover:bg-amber-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              {aiPrediction ? "Regenerate Prediction" : "Predict My Future"}
+            </button>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+            <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Smart Tax Planning</h4>
+            <p className="text-[11px] text-neutral-500 leading-relaxed mb-4">
+              Our AI can identify potential tax deductions based on your current business structure and expenses.
+            </p>
+            <button className="w-full py-2 border border-neutral-200 text-neutral-900 rounded-lg text-xs font-bold hover:bg-neutral-50 transition-all">
               Generate Tax Report
             </button>
           </div>

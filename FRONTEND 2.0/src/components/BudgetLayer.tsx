@@ -12,7 +12,7 @@ import { cn } from "../lib/utils";
 import { BudgetRecord, BudgetCategory } from "../types";
 
 const MOCK_BUDGET_DATA: BudgetRecord[] = [
-  { category: "Marketing", planned: 5000, actual: 5200, history: [4200, 4800, 5200] },
+  { category: "Marketing", planned: 8000, actual: 5200, history: [4200, 4800, 5200] },
   { category: "Sales", planned: 3000, actual: 2800, history: [2500, 2700, 2800] },
   { category: "R&D", planned: 8000, actual: 7500, history: [6800, 7200, 7500] },
   { category: "G&A", planned: 2000, actual: 2100, history: [1900, 2000, 2100] },

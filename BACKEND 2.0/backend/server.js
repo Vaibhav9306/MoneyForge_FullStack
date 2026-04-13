@@ -22,7 +22,14 @@ connectDB();
 // 🧩 Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+      "http://localhost:3000", 
+      "http://localhost:5173", 
+      "http://127.0.0.1:5173", 
+      "http://localhost:4173",
+      "http://127.0.0.1:4173"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
   })
 );
@@ -63,7 +70,7 @@ app.use((err, req, res, next) => {
 });
 
 // 🚀 Start
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Server running on http://localhost:${PORT}`);
   console.log(`📦 Routes: /api/auth | /api/user | /api/finance | /api/ideas | /api/goals | /api/ai`);

@@ -41,34 +41,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkUser();
   }, []);
 
-  const login = async (email: string, password?: string) => {
+  const login = async (email: string, password: string) => {
+    if (!email || !password) {
+      throw new Error("Email and password are required.");
+    }
     const { data } = await api.post('/api/auth/login', { email, password });
-    
     if (data.token) {
       localStorage.setItem("moneyforge_token", data.token);
     }
-    
+    // The backend returns user info under data.user
+    const userData = data.user || {};
     setUser({
-      id: data._id || Math.random().toString(36).substr(2, 9),
-      email: data.email,
-      name: data.name,
+      id: userData.id || userData._id || Math.random().toString(36).substr(2, 9),
+      email: userData.email,
+      name: userData.name,
       joinedAt: new Date().toISOString(),
     });
   };
 
   const signup = async (email: string, password?: string, name?: string) => {
-    const { data } = await api.post('/api/auth/register', { email, password, name });
-    
-    if (data.token) {
-      localStorage.setItem("moneyforge_token", data.token);
+    if (!email || !password || !name) {
+      throw new Error("Name, email, and password are required.");
     }
-    
-    setUser({
-      id: data._id || Math.random().toString(36).substr(2, 9),
-      email: data.email,
-      name: data.name,
-      joinedAt: new Date().toISOString(),
-    });
+    try {
+      const { data } = await api.post('/api/auth/register', { name, email, password });
+      if (data.token) {
+        localStorage.setItem("moneyforge_token", data.token);
+      }
+      const userData = data.user || {};
+      setUser({
+        id: userData.id || userData._id || Math.random().toString(36).substr(2, 9),
+        email: userData.email,
+        name: userData.name,
+        joinedAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      // Forward backend error message
+      const msg = error?.response?.data?.msg || error?.message || "Registration failed.";
+      throw new Error(msg);
+    }
   };
 
   const logout = () => {

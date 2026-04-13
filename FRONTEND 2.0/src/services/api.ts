@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+// More robust base URL selection
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // Standard fallback
+  return 'http://localhost:8000';
+};
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json'
   }

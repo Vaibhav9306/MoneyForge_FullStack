@@ -1,60 +1,86 @@
-import { GoogleGenAI } from "@google/genai";
+import * as aiService from "../services/aiService.js";
 
-let aiClient = null;
+/**
+ * Handle AI Chat
+ */
+export const chatAI = async (req, res) => {
+  try {
+    const { message, financialData } = req.body;
 
-function getClient() {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not set in environment variables");
+    if (!message) {
+      return res.status(400).json({ msg: "Message is required ❌" });
     }
-    aiClient = new GoogleGenAI({ apiKey });
-  }
-  return aiClient;
-}
 
-// ================= GENERATE AI TEXT =================
+    const reply = await aiService.chatWithAI(message, financialData);
+
+    res.status(200).json({ reply });
+  } catch (error) {
+    console.error("AI Controller Error (Chat):", error.message);
+    
+    if (error.message.includes("API_KEY")) {
+      return res.status(503).json({ msg: "Gemini API key is not configured ❌" });
+    }
+
+    if (error.message.includes("429") || error.message.includes("quota")) {
+      return res.status(429).json({ msg: "AI quota exceeded. Try again later ❌" });
+    }
+
+    res.status(500).json({ msg: "AI chat failed ❌", error: error.message });
+  }
+};
+
+/**
+ * Handle AI Insights
+ */
+export const getInsights = async (req, res) => {
+  try {
+    const { financialData } = req.body;
+
+    if (!financialData) {
+      return res.status(400).json({ msg: "Financial data is required ❌" });
+    }
+
+    const insights = await aiService.generateFinancialInsights(financialData);
+
+    res.status(200).json({ insights });
+  } catch (error) {
+    console.error("AI Controller Error (Insights):", error.message);
+    res.status(500).json({ msg: "Failed to generate insights ❌", error: error.message });
+  }
+};
+
+/**
+ * Handle AI Predictions
+ */
+export const getPredictions = async (req, res) => {
+  try {
+    const { financialData } = req.body;
+
+    if (!financialData) {
+      return res.status(400).json({ msg: "Financial data is required ❌" });
+    }
+
+    const prediction = await aiService.predictFinancials(financialData);
+
+    res.status(200).json({ prediction });
+  } catch (error) {
+    console.error("AI Controller Error (Predictions):", error.message);
+    res.status(500).json({ msg: "Failed to generate predictions ❌", error: error.message });
+  }
+};
+
+/**
+ * Legacy generateAI for backward compatibility (optional but safe to keep/redirect)
+ */
 export const generateAI = async (req, res) => {
   try {
     const { prompt } = req.body;
-
-    if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
-      return res.status(400).json({ msg: "A valid prompt is required ❌" });
-    }
-
-    if (prompt.length > 5000) {
-      return res.status(400).json({ msg: "Prompt is too long (max 5000 chars) ❌" });
-    }
-
-    const ai = getClient();
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt.trim(),
-    });
-
-    const text = response.text;
-
-    if (!text) {
-      return res.status(500).json({ msg: "AI returned an empty response ❌" });
-    }
-
+    if (!prompt) return res.status(400).json({ msg: "Prompt is required" });
+    
+    // Using chat logic as a fallback for general prompt generation
+    const text = await aiService.chatWithAI(prompt, null);
     res.status(200).json({ text });
   } catch (error) {
-    console.error("AI Generation Error:", error.message);
-
-    // Handle API key errors
-    if (error.message.includes("API_KEY") || error.message.includes("not set")) {
-      return res.status(503).json({
-        msg: "AI service is not configured. Please add GEMINI_API_KEY to the backend .env file ❌",
-      });
-    }
-
-    // Handle quota errors
-    if (error.message.includes("quota") || error.message.includes("RESOURCE_EXHAUSTED")) {
-      return res.status(429).json({ msg: "AI quota exceeded. Please try again later ❌" });
-    }
-
-    res.status(500).json({ msg: "AI generation failed ❌", error: error.message });
+    res.status(500).json({ msg: "AI Generation failed", error: error.message });
   }
 };

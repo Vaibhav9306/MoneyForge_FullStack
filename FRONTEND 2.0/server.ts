@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+
 app.use(express.json());
 app.use(cookieParser(process.env.SESSION_SECRET || "moneyforge-secret"));
 

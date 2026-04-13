@@ -1,7 +1,7 @@
 import api from "./api";
 
 /**
- * Helper function to generate content using the backend AI route.
+ * Helper function to generate generic content via backend.
  */
 export async function generateText(prompt: string) {
   try {
@@ -9,11 +9,50 @@ export async function generateText(prompt: string) {
     return response.data.text;
   } catch (error: any) {
     console.error("Error generating content via backend:", error);
-    // Graceful fallback or error propagation
     throw new Error(error.response?.data?.msg || "AI Generation failed ❌");
   }
 }
 
+/**
+ * Chat with the AI via the backend chat route.
+ */
+export async function chatWithAI(message: string, financialData?: any) {
+  try {
+    const response = await api.post("/api/ai/chat", { message, financialData });
+    return response.data; // Returns { reply: "..." }
+  } catch (error: any) {
+    console.error("Error chatting with AI via backend:", error);
+    throw new Error(error.response?.data?.msg || "AI Chat failed ❌");
+  }
+}
+
+/**
+ * Get financial insights via backend.
+ */
+export async function getFinancialInsights(financialData: any) {
+  try {
+    const response = await api.post("/api/ai/insights", { financialData });
+    return response.data.insights;
+  } catch (error: any) {
+    console.error("Error getting insights:", error);
+    throw new Error(error.response?.data?.msg || "Failed to get insights ❌");
+  }
+}
+
+/**
+ * Get financial predictions via backend.
+ */
+export async function getFinancialPredictions(financialData: any) {
+  try {
+    const response = await api.post("/api/ai/predict", { financialData });
+    return response.data.prediction;
+  } catch (error: any) {
+    console.error("Error getting predictions:", error);
+    throw new Error(error.response?.data?.msg || "Failed to get predictions ❌");
+  }
+}
+
+// ... rest of the file (email, logo, ad campaign functions) remains the same but uses the updated generateText
 export interface EmailStep {
   day: number;
   subject: string;
@@ -41,14 +80,6 @@ export async function generateEmailIntent(userPrompt: string, activeIdea: any): 
     User Intent: "${userPrompt}"
     
     Based on the user intent and the startup context, generate a professional email or email sequence.
-    
-    Rules:
-    1. If the user says "sequence" or implies multiple emails, set isSequence to true and generate at least 3 steps.
-    2. If the user says "single email", set isSequence to false.
-    3. For each email, provide a "purpose" (e.g., "Introduction", "Value Prop Follow-up", "Social Proof", "Final Break-up").
-    4. If no timing is provided, default to Day 1, Day 3, and Day 7 for sequences.
-    5. Generate "scheduledTime" as a human-readable string (e.g., "Tomorrow at 9:00 AM", "In 3 days at 10:00 AM").
-    6. Ensure the body is HTML formatted and highly personalized to the active idea.
     
     Return ONLY a JSON object in the following format:
     {
